@@ -235,21 +235,22 @@ function createFloatingWidget(): FloatingWidget {
   container.style.alignItems = 'flex-end';
   container.style.gap = '8px';
   container.style.fontFamily = 'IBM Plex Sans, -apple-system, BlinkMacSystemFont, sans-serif';
-  container.style.pointerEvents = 'none';
+  container.style.pointerEvents = 'auto';
 
   const historyPanel = document.createElement('div');
   historyPanel.style.display = 'none';
-  historyPanel.style.width = '260px';
+  historyPanel.style.width = '280px';
   historyPanel.style.flexDirection = 'column';
-  historyPanel.style.background = 'rgba(20, 20, 20, 0.97)';
-  historyPanel.style.borderRadius = '14px';
-  historyPanel.style.padding = '12px';
-  historyPanel.style.boxShadow = '0 16px 32px rgba(0, 0, 0, 0.45)';
-  historyPanel.style.border = '1px solid rgba(255, 255, 255, 0.08)';
-  historyPanel.style.color = '#ffffff';
-  historyPanel.style.gap = '8px';
+  historyPanel.style.background = 'rgba(18, 18, 20, 0.92)';
+  historyPanel.style.backdropFilter = 'blur(18px)';
+  historyPanel.style.borderRadius = '18px';
+  historyPanel.style.padding = '16px';
+  historyPanel.style.boxShadow = '0 20px 45px rgba(0, 0, 0, 0.55)';
+  historyPanel.style.border = '1px solid rgba(255, 255, 255, 0.12)';
+  historyPanel.style.color = '#f7f5f1';
+  historyPanel.style.gap = '10px';
   historyPanel.style.opacity = '0';
-  historyPanel.style.transform = 'translateY(8px) scaleY(0.95)';
+  historyPanel.style.transform = 'translateY(10px) scaleY(0.95)';
   historyPanel.style.transformOrigin = 'bottom right';
   historyPanel.style.transition = 'opacity 180ms ease, transform 180ms ease';
   historyPanel.style.pointerEvents = 'none';
@@ -259,27 +260,28 @@ function createFloatingWidget(): FloatingWidget {
   historyDescription.textContent = 'You already opened a chat for this thread.';
   historyDescription.style.margin = '0';
   historyDescription.style.fontSize = '12px';
-  historyDescription.style.opacity = '0.75';
-  historyDescription.style.color = '#d4d4d4';
+  historyDescription.style.opacity = '0.8';
+  historyDescription.style.color = '#f1f0ec';
+  historyDescription.style.fontSize = '12px';
 
   const entryButton = document.createElement('button');
   entryButton.type = 'button';
   entryButton.style.width = '100%';
   entryButton.style.border = 'none';
-  entryButton.style.borderRadius = '10px';
-  entryButton.style.padding = '10px 12px';
+  entryButton.style.borderRadius = '16px';
+  entryButton.style.padding = '12px 14px';
   entryButton.style.display = 'flex';
   entryButton.style.flexDirection = 'column';
   entryButton.style.alignItems = 'flex-start';
   entryButton.style.justifyContent = 'center';
   entryButton.style.gap = '4px';
-  entryButton.style.background = '#2c2c2c';
+  entryButton.style.background = '#2d2d2d';
   entryButton.style.color = '#ffffff';
   entryButton.style.fontFamily = 'inherit';
   entryButton.style.fontSize = '13px';
   entryButton.style.cursor = 'not-allowed';
   entryButton.style.opacity = '0.6';
-  entryButton.style.transition = 'transform 120ms ease, box-shadow 120ms ease';
+  entryButton.style.transition = 'transform 180ms ease, box-shadow 180ms ease';
   entryButton.disabled = true;
   entryButton.setAttribute('aria-label', 'Continue previous conversation');
   entryButton.setAttribute('aria-disabled', 'true');
@@ -379,6 +381,18 @@ function createFloatingWidget(): FloatingWidget {
     setPanelOpen(false);
   });
 
+  entryButton.addEventListener('mouseenter', () => {
+    if (entryButton.disabled) return;
+    entryButton.style.transform = 'translateY(-2px)';
+    entryButton.style.boxShadow = '0 10px 28px rgba(0, 0, 0, 0.45)';
+  });
+
+  entryButton.addEventListener('mouseleave', () => {
+    if (entryButton.disabled) return;
+    entryButton.style.transform = 'translateY(0)';
+    entryButton.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.35)';
+  });
+
   document.addEventListener('click', handleDocumentClick);
 
   const dispose = () => {
@@ -426,6 +440,8 @@ async function refreshHistoryState(threadKey: string) {
     widget.entryMeta.textContent = 'Create a summary to save a chat.';
     widget.summaryButton.style.borderRadius = '10px';
     widget.summaryButton.style.borderRight = 'none';
+    widget.entryButton.style.boxShadow = 'none';
+    widget.entryButton.style.transform = 'translateY(0)';
     return;
   }
 
@@ -441,6 +457,7 @@ async function refreshHistoryState(threadKey: string) {
   widget.setPanelOpen(false);
   widget.summaryButton.style.borderRadius = '10px 0 0 10px';
   widget.summaryButton.style.borderRight = '1px solid rgba(255, 255, 255, 0.08)';
+  widget.entryButton.style.boxShadow = '0 10px 28px rgba(0, 0, 0, 0.45)';
 }
 
 function updateButtonVisibility() {

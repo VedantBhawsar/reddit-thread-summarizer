@@ -9,7 +9,7 @@ export default defineConfig({
     name: 'Reddit Summarizer',
     description:
       'Inject a floating control on Reddit threads, summarize visible content, and reopen the matching ChatGPT conversation.',
-    permissions: ['tabs', 'activeTab', 'scripting'],
+    permissions: ['tabs', 'activeTab', 'scripting', 'storage'],
     host_permissions: [
       '*://*.reddit.com/*',
       '*://chat.openai.com/*',
