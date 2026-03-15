@@ -12,6 +12,11 @@ type OpenChatGptMessage = {
   payload: string;
 };
 
+type OpenExistingChatMessage = {
+  type: 'OPEN_EXISTING_CHAT';
+  chatUrl: string;
+};
+
 type ChatGptPageReadyMessage = {
   type: 'CHATGPT_PAGE_READY';
   chatUrl: string;
@@ -25,7 +30,11 @@ type ChatGptPromptSubmittedMessage = {
   createdAt?: number;
 };
 
-type BackgroundMessage = OpenChatGptMessage | ChatGptPageReadyMessage | ChatGptPromptSubmittedMessage;
+type BackgroundMessage =
+  | OpenChatGptMessage
+  | OpenExistingChatMessage
+  | ChatGptPageReadyMessage
+  | ChatGptPromptSubmittedMessage;
 
 type ThreadHistoryEntry = {
   chatUrl: string;
@@ -106,6 +115,7 @@ async function persistSessionEntry(pending: PendingPrompt, chatUrl: string) {
 }
 
 async function recordThreadHistory(pending: PendingPrompt, chatUrl: string) {
+  await Promise.resolve(()=> setTimeout(() => {}, 5000)); 
   await persistSessionEntry(pending, chatUrl);
 
   const threadKey = normalizeThreadUrl(pending.sourceUrl);
@@ -148,6 +158,10 @@ function isBackgroundMessage(message: unknown): message is BackgroundMessage {
   };
   if (candidate.type === 'OPEN_CHATGPT_WITH_THREAD') {
     return typeof candidate.payload === 'string';
+  }
+
+  if (candidate.type === 'OPEN_EXISTING_CHAT') {
+    return typeof candidate.chatUrl === 'string';
   }
 
   if (candidate.type === 'CHATGPT_PAGE_READY') {
@@ -199,6 +213,12 @@ export default defineBackground(() => {
         });
       }
 
+      return { ok: true };
+    }
+
+    if (message.type === 'OPEN_EXISTING_CHAT') {
+      const targetUrl = normalizeChatUrl(message.chatUrl);
+      await browser.tabs.create({ url: targetUrl });
       return { ok: true };
     }
 
