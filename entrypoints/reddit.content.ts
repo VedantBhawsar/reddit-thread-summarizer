@@ -582,7 +582,6 @@ async function sendThreadToChatGPT(button: HTMLButtonElement) {
 
     setLabel('Opened ChatGPT');
   } catch (error) {
-    console.error('Failed to send thread to ChatGPT', error);
     setLabel('Retry send');
   } finally {
     window.setTimeout(() => {

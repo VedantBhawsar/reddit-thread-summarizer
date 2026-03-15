@@ -197,7 +197,6 @@ export default defineContentScript({
           }),
         )
         .catch((error) => {
-          console.error('Failed to inject ChatGPT prompt', error);
           return browser.runtime.sendMessage({
             type: 'CHATGPT_PROMPT_SUBMITTED',
             chatUrl: window.location.href,

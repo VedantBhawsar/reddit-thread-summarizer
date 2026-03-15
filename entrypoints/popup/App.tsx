@@ -63,7 +63,6 @@ export default function App() {
           count: stored ? Object.keys(stored).length : 0,
         });
       } catch (error) {
-        console.error('Failed to load session history', error);
       }
     };
 
@@ -126,7 +125,6 @@ export default function App() {
       <div className="hero">
         <img src={logo} alt="Reddit Summarizer mark" className="hero-logo" />
         <div>
-          <p className="eyebrow">WXT + React</p>
           <h1>Reddit Summarizer</h1>
           <p className="lede">
             Capture any Reddit thread, forward it to ChatGPT, and see the summary land without leaving
