@@ -23,6 +23,14 @@ npm run build
 npm run zip
 ```
 
+Build a Firefox-targeted package with the browser flag as well:
+
+```bash
+npm run dev:firefox
+npm run build:firefox
+npm run zip:firefox
+```
+
 ## Notes
 
 - only comments currently loaded in the Reddit DOM are captured
