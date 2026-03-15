@@ -34,6 +34,30 @@ const COMMENT_META_SELECTORS = [
   'a[href*="/u/"]',
 ].join(', ');
 
+const HISTORY_STORAGE_KEY = 'redditSummarizerThreadChats';
+
+type BrowserModule = typeof import('wxt/browser')['browser'];
+type StorageOnChangedListener = Parameters<
+  BrowserModule['storage']['onChanged']['addListener']
+>[0];
+
+type ThreadHistoryEntry = {
+  chatUrl: string;
+  lastUpdated: number;
+};
+
+type FloatingWidget = {
+  container: HTMLDivElement;
+  historyPanel: HTMLDivElement;
+  historyToggle: HTMLButtonElement;
+  entryButton: HTMLButtonElement;
+  entryTitle: HTMLSpanElement;
+  entryMeta: HTMLSpanElement;
+  summaryButton: HTMLButtonElement;
+  setPanelOpen: (open: boolean) => void;
+  dispose: () => void;
+};
+
 function normalizeText(text: string) {
   return text.replace(/\n{3,}/g, '\n\n').replace(/[ \t]+\n/g, '\n').trim();
 }
@@ -41,6 +65,25 @@ function normalizeText(text: string) {
 function getVisibleText(element: Element | null | undefined) {
   if (!(element instanceof HTMLElement)) return '';
   return normalizeText(element.innerText || element.textContent || '');
+}
+
+function normalizeThreadUrl(url: string) {
+  const match = url.match(THREAD_URL_REGEX);
+  if (!match) return null;
+  return match[0].replace(/\/+$/, '');
+}
+
+async function readThreadHistory(threadKey: string) {
+  try {
+    const stored = (await browser.storage.local.get(HISTORY_STORAGE_KEY))[
+      HISTORY_STORAGE_KEY
+    ] as Record<string, ThreadHistoryEntry> | undefined;
+    if (!stored) return null;
+    return stored[threadKey] ?? null;
+  } catch (error) {
+    console.warn('Failed to read thread history', error);
+    return null;
+  }
 }
 
 function isLikelyNestedComment(node: HTMLElement, allNodes: HTMLElement[]) {
@@ -120,16 +163,15 @@ function extractComments() {
     .filter(Boolean);
 }
 
-let floatingButton: HTMLButtonElement | null = null;
+let floatingWidget: FloatingWidget | null = null;
+let currentThreadKey: string | null = null;
+let currentHistoryEntry: ThreadHistoryEntry | null = null;
 
 function buildActionButton() {
   const button = document.createElement('button');
   button.id = BUTTON_ID;
   button.type = 'button';
   button.setAttribute('aria-label', 'Send the visible Reddit thread to ChatGPT for summarization');
-  button.style.position = 'fixed';
-  button.style.right = '16px';
-  button.style.bottom = '16px';
   button.style.zIndex = '2147483647';
   button.style.padding = '10px 18px';
   button.style.borderRadius = '8px';
@@ -182,20 +224,245 @@ function buildActionButton() {
   return button;
 }
 
+function createFloatingWidget(): FloatingWidget {
+  const container = document.createElement('div');
+  container.style.position = 'fixed';
+  container.style.right = '16px';
+  container.style.bottom = '16px';
+  container.style.zIndex = '2147483647';
+  container.style.display = 'flex';
+  container.style.flexDirection = 'column';
+  container.style.alignItems = 'flex-end';
+  container.style.gap = '8px';
+  container.style.fontFamily = 'IBM Plex Sans, -apple-system, BlinkMacSystemFont, sans-serif';
+  container.style.pointerEvents = 'none';
+
+  const historyPanel = document.createElement('div');
+  historyPanel.style.display = 'none';
+  historyPanel.style.width = '260px';
+  historyPanel.style.flexDirection = 'column';
+  historyPanel.style.background = 'rgba(20, 20, 20, 0.97)';
+  historyPanel.style.borderRadius = '14px';
+  historyPanel.style.padding = '12px';
+  historyPanel.style.boxShadow = '0 16px 32px rgba(0, 0, 0, 0.45)';
+  historyPanel.style.border = '1px solid rgba(255, 255, 255, 0.08)';
+  historyPanel.style.color = '#ffffff';
+  historyPanel.style.gap = '8px';
+  historyPanel.style.opacity = '0';
+  historyPanel.style.transform = 'translateY(8px) scaleY(0.95)';
+  historyPanel.style.transformOrigin = 'bottom right';
+  historyPanel.style.transition = 'opacity 180ms ease, transform 180ms ease';
+  historyPanel.style.pointerEvents = 'none';
+  historyPanel.style.visibility = 'hidden';
+
+  const historyDescription = document.createElement('p');
+  historyDescription.textContent = 'You already opened a chat for this thread.';
+  historyDescription.style.margin = '0';
+  historyDescription.style.fontSize = '12px';
+  historyDescription.style.opacity = '0.75';
+  historyDescription.style.color = '#d4d4d4';
+
+  const entryButton = document.createElement('button');
+  entryButton.type = 'button';
+  entryButton.style.width = '100%';
+  entryButton.style.border = 'none';
+  entryButton.style.borderRadius = '10px';
+  entryButton.style.padding = '10px 12px';
+  entryButton.style.display = 'flex';
+  entryButton.style.flexDirection = 'column';
+  entryButton.style.alignItems = 'flex-start';
+  entryButton.style.justifyContent = 'center';
+  entryButton.style.gap = '4px';
+  entryButton.style.background = '#2c2c2c';
+  entryButton.style.color = '#ffffff';
+  entryButton.style.fontFamily = 'inherit';
+  entryButton.style.fontSize = '13px';
+  entryButton.style.cursor = 'not-allowed';
+  entryButton.style.opacity = '0.6';
+  entryButton.style.transition = 'transform 120ms ease, box-shadow 120ms ease';
+  entryButton.disabled = true;
+  entryButton.setAttribute('aria-label', 'Continue previous conversation');
+  entryButton.setAttribute('aria-disabled', 'true');
+
+  const entryTitle = document.createElement('span');
+  entryTitle.textContent = 'No saved chat yet';
+  entryTitle.style.fontWeight = '600';
+
+  const entryMeta = document.createElement('span');
+  entryMeta.textContent = 'Create a summary to save a chat.';
+  entryMeta.style.fontSize = '11px';
+  entryMeta.style.opacity = '0.75';
+
+  entryButton.append(entryTitle, entryMeta);
+  historyPanel.append(historyDescription, entryButton);
+
+  const buttonGroup = document.createElement('div');
+  buttonGroup.style.display = 'inline-flex';
+  buttonGroup.style.alignItems = 'stretch';
+  buttonGroup.style.gap = '0';
+  buttonGroup.style.pointerEvents = 'auto';
+
+  const summaryButton = buildActionButton();
+  summaryButton.style.margin = '0';
+  summaryButton.style.padding = '10px 16px';
+  summaryButton.style.borderRadius = '10px';
+
+  const historyToggle = document.createElement('button');
+  historyToggle.type = 'button';
+  historyToggle.style.width = '36px';
+  historyToggle.style.height = '36px';
+  historyToggle.style.borderRadius = '0 10px 10px 0';
+  historyToggle.style.border = '1px solid rgba(255, 255, 255, 0.08)';
+  historyToggle.style.borderLeft = 'none';
+  historyToggle.style.background = '#1f1f1f';
+  historyToggle.style.color = '#ffffff';
+  historyToggle.style.display = 'flex';
+  historyToggle.style.alignItems = 'center';
+  historyToggle.style.justifyContent = 'center';
+  historyToggle.style.fontSize = '16px';
+  historyToggle.style.cursor = 'pointer';
+  historyToggle.style.transition = 'transform 200ms ease, background 120ms ease';
+  historyToggle.innerHTML = '<span aria-hidden=\"true\">▴</span>';
+  historyToggle.title = 'Show previous conversation';
+  historyToggle.setAttribute('aria-expanded', 'false');
+  historyToggle.hidden = true;
+  historyToggle.style.display = 'none';
+  historyToggle.addEventListener('mouseenter', () => (historyToggle.style.background = '#2d2d2d'));
+  historyToggle.addEventListener('mouseleave', () => (historyToggle.style.background = '#1f1f1f'));
+
+  buttonGroup.append(summaryButton, historyToggle);
+  container.append(historyPanel, buttonGroup);
+
+  let panelOpen = false;
+
+  const setPanelOpen = (open: boolean) => {
+    if (historyPanel.style.display === 'none') {
+      panelOpen = false;
+      historyToggle.setAttribute('aria-expanded', 'false');
+      historyToggle.style.transform = 'rotate(0deg)';
+      return;
+    }
+
+    panelOpen = open;
+    if (open) {
+      historyPanel.style.transform = 'translateY(0) scaleY(1)';
+      historyPanel.style.opacity = '1';
+      historyPanel.style.visibility = 'visible';
+      historyPanel.style.pointerEvents = 'auto';
+    } else {
+      historyPanel.style.transform = 'translateY(8px) scaleY(0.95)';
+      historyPanel.style.opacity = '0';
+      historyPanel.style.visibility = 'hidden';
+      historyPanel.style.pointerEvents = 'none';
+    }
+
+    historyToggle.style.transform = open ? 'rotate(180deg)' : 'rotate(0deg)';
+    historyToggle.setAttribute('aria-expanded', String(open));
+  };
+
+  const handleDocumentClick = (event: MouseEvent) => {
+    if (panelOpen && !container.contains(event.target as Node)) {
+      setPanelOpen(false);
+    }
+  };
+
+  historyToggle.addEventListener('click', (event) => {
+    event.stopPropagation();
+    if (historyPanel.style.display === 'none') return;
+    setPanelOpen(!panelOpen);
+  });
+
+  entryButton.addEventListener('click', (event) => {
+    event.stopPropagation();
+    if (!currentHistoryEntry) return;
+    void browser.tabs.create({ url: currentHistoryEntry.chatUrl });
+    setPanelOpen(false);
+  });
+
+  document.addEventListener('click', handleDocumentClick);
+
+  const dispose = () => {
+    setPanelOpen(false);
+    document.removeEventListener('click', handleDocumentClick);
+    container.remove();
+  };
+
+  return {
+    container,
+    historyPanel,
+    historyToggle,
+    entryButton,
+    entryTitle,
+    entryMeta,
+    summaryButton,
+    setPanelOpen,
+    dispose,
+  };
+}
+
+async function refreshHistoryState(threadKey: string) {
+  const widget = floatingWidget;
+  if (!widget) return;
+
+  const entry = await readThreadHistory(threadKey);
+  if (!floatingWidget || currentThreadKey !== threadKey) return;
+
+  currentHistoryEntry = entry;
+
+  if (!entry) {
+    widget.historyToggle.hidden = true;
+    widget.historyToggle.style.display = 'none';
+    widget.historyPanel.style.display = 'none';
+    widget.historyPanel.style.visibility = 'hidden';
+    widget.historyPanel.style.opacity = '0';
+    widget.historyPanel.style.pointerEvents = 'none';
+    widget.historyPanel.style.transform = 'translateY(8px) scaleY(0.95)';
+    widget.setPanelOpen(false);
+    widget.entryButton.disabled = true;
+    widget.entryButton.style.cursor = 'not-allowed';
+    widget.entryButton.style.opacity = '0.6';
+    widget.entryButton.setAttribute('aria-disabled', 'true');
+    widget.entryTitle.textContent = 'No saved chat yet';
+    widget.entryMeta.textContent = 'Create a summary to save a chat.';
+    widget.summaryButton.style.borderRadius = '10px';
+    widget.summaryButton.style.borderRight = 'none';
+    return;
+  }
+
+  widget.historyToggle.hidden = false;
+  widget.historyToggle.style.display = 'flex';
+  widget.historyPanel.style.display = 'flex';
+  widget.entryButton.disabled = false;
+  widget.entryButton.style.cursor = 'pointer';
+  widget.entryButton.style.opacity = '1';
+  widget.entryButton.setAttribute('aria-disabled', 'false');
+  widget.entryTitle.textContent = 'Continue previous chat';
+  widget.entryMeta.textContent = `Saved ${new Date(entry.lastUpdated).toLocaleString()}`;
+  widget.setPanelOpen(false);
+  widget.summaryButton.style.borderRadius = '10px 0 0 10px';
+  widget.summaryButton.style.borderRight = '1px solid rgba(255, 255, 255, 0.08)';
+}
+
 function updateButtonVisibility() {
-  const shouldShow = THREAD_URL_REGEX.test(window.location.href);
-  if (shouldShow) {
-    if (!floatingButton) {
-      floatingButton = buildActionButton();
-      document.body.append(floatingButton);
+  const threadKey = normalizeThreadUrl(window.location.href);
+  if (threadKey) {
+    if (!floatingWidget) {
+      floatingWidget = createFloatingWidget();
+      document.body.append(floatingWidget.container);
+    }
+    if (currentThreadKey !== threadKey) {
+      currentThreadKey = threadKey;
+      void refreshHistoryState(threadKey);
     }
     return;
   }
 
-  if (floatingButton) {
-    floatingButton.remove();
-    floatingButton = null;
+  if (floatingWidget) {
+    floatingWidget.dispose();
+    floatingWidget = null;
   }
+  currentThreadKey = null;
+  currentHistoryEntry = null;
 }
 
 function watchLocationChange(onChange: () => void) {
@@ -268,6 +535,18 @@ export default defineContentScript({
   main() {
     updateButtonVisibility();
     const stop = watchLocationChange(updateButtonVisibility);
-    window.addEventListener('unload', stop);
+    const handleStorageChange: StorageOnChangedListener = (changes, areaName) => {
+      if (areaName !== 'local') return;
+      if (!currentThreadKey) return;
+      if (HISTORY_STORAGE_KEY in changes) {
+        void refreshHistoryState(currentThreadKey);
+      }
+    };
+
+    browser.storage.onChanged.addListener(handleStorageChange);
+    window.addEventListener('unload', () => {
+      stop();
+      browser.storage.onChanged.removeListener(handleStorageChange);
+    });
   },
 });

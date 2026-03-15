@@ -7,15 +7,26 @@ export default defineConfig({
   }),
   manifest: {
     name: 'Reddit Summarizer',
-    description: 'Capture the visible Reddit thread and send it to ChatGPT.',
+    description:
+      'Inject a floating control on Reddit threads, summarize visible content, and reopen the matching ChatGPT conversation.',
     permissions: ['tabs', 'activeTab', 'scripting'],
     host_permissions: [
       '*://*.reddit.com/*',
       '*://chat.openai.com/*',
       '*://chatgpt.com/*',
     ],
+    icons: {
+      16: 'logo.png',
+      48: 'logo.png',
+      128: 'logo.png',
+    },
     action: {
       default_title: 'Reddit Summarizer',
+      default_icon: {
+        16: 'logo.png',
+        48: 'logo.png',
+        128: 'logo.png',
+      },
     },
   },
 });
