@@ -1,0 +1,86 @@
+:root {
+  color-scheme: light;
+  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at top, rgba(255, 145, 77, 0.35), transparent 50%),
+    linear-gradient(160deg, #fff6e8 0%, #ffe5d0 100%);
+  color: #2f1b12;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 360px;
+}
+
+.popup-shell {
+  padding: 18px;
+}
+
+.hero {
+  padding: 18px;
+  border-radius: 24px;
+  background: rgba(255, 250, 245, 0.72);
+  border: 1px solid rgba(120, 53, 15, 0.08);
+  box-shadow: 0 18px 60px rgba(120, 53, 15, 0.12);
+  backdrop-filter: blur(10px);
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #9a3412;
+}
+
+h1,
+h2,
+p,
+ol {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 10px;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.lede {
+  margin-bottom: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.panel {
+  margin-top: 14px;
+  padding: 16px;
+  border-radius: 20px;
+  background: rgba(255, 252, 248, 0.88);
+  border: 1px solid rgba(120, 53, 15, 0.1);
+}
+
+.panel-accent {
+  background: linear-gradient(180deg, rgba(255, 237, 213, 0.95), rgba(255, 247, 237, 0.95));
+}
+
+h2 {
+  margin-bottom: 10px;
+  font-size: 16px;
+}
+
+ol {
+  margin-bottom: 0;
+  padding-left: 20px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.panel p:last-child {
+  margin-bottom: 0;
+}
