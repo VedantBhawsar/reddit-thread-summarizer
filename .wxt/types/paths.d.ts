@@ -7,6 +7,9 @@ declare module "wxt/browser" {
     | "/background.js"
     | "/content-scripts/chatgpt.js"
     | "/content-scripts/reddit.js"
+    | "/icons/icon-128.png"
+    | "/icons/icon-16.png"
+    | "/icons/icon-48.png"
     | "/logo.png"
     | "/popup.html"
   type HtmlPublicPath = Extract<PublicPath, `${string}.html`>

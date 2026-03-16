@@ -35,6 +35,7 @@ const COMMENT_META_SELECTORS = [
 ].join(', ');
 
 const HISTORY_STORAGE_KEY = 'redditSummarizerThreadChats';
+const SVG_NS = 'http://www.w3.org/2000/svg';
 
 type BrowserModule = typeof import('wxt/browser')['browser'];
 type StorageOnChangedListener = Parameters<
@@ -221,10 +222,30 @@ function buildActionButton() {
   button.style.opacity = '0.95';
 
   const icon = document.createElement('span');
-  icon.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>`;
   icon.style.display = 'flex';
   icon.style.alignItems = 'center';
   icon.style.justifyContent = 'center';
+  const iconSvg = document.createElementNS(SVG_NS, 'svg');
+  iconSvg.setAttribute('width', '14');
+  iconSvg.setAttribute('height', '14');
+  iconSvg.setAttribute('viewBox', '0 0 24 24');
+  iconSvg.setAttribute('fill', 'none');
+  iconSvg.setAttribute('stroke', 'currentColor');
+  iconSvg.setAttribute('stroke-width', '2.5');
+  iconSvg.setAttribute('stroke-linecap', 'round');
+  iconSvg.setAttribute('stroke-linejoin', 'round');
+
+  const topPath = document.createElementNS(SVG_NS, 'path');
+  topPath.setAttribute('d', 'M12 2L2 7l10 5 10-5-10-5z');
+
+  const middlePath = document.createElementNS(SVG_NS, 'path');
+  middlePath.setAttribute('d', 'M2 17l10 5 10-5');
+
+  const bottomPath = document.createElementNS(SVG_NS, 'path');
+  bottomPath.setAttribute('d', 'M2 12l10 5 10-5');
+
+  iconSvg.append(topPath, middlePath, bottomPath);
+  icon.append(iconSvg);
 
   const label = document.createElement('span');
   label.dataset.role = 'label';
@@ -365,7 +386,10 @@ function createFloatingWidget(): FloatingWidget {
   historyToggle.style.fontSize = '16px';
   historyToggle.style.cursor = 'pointer';
   historyToggle.style.transition = 'transform 200ms ease, background 120ms ease';
-  historyToggle.innerHTML = '<span aria-hidden=\"true\">▴</span>';
+  const historyToggleGlyph = document.createElement('span');
+  historyToggleGlyph.textContent = '▴';
+  historyToggleGlyph.setAttribute('aria-hidden', 'true');
+  historyToggle.append(historyToggleGlyph);
   historyToggle.title = 'Show previous conversation';
   historyToggle.setAttribute('aria-expanded', 'false');
   historyToggle.hidden = true;
